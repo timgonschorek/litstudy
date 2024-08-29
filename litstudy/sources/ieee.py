@@ -20,22 +20,29 @@ class IEEEDocument(Document):
     def authors(self):
         authors = self.entry.get("Authors", "").split("; ")
         affs = self.entry.get("Author Affiliations", "").split("; ")
-
+        new_authors = []
+        for author in authors:
+            parts = author.strip().split(" ")  # Split at spaces and remove leading/trailing spaces
+            if len(parts) > 1:
+                new_author = f"{parts[-1]}, {parts[0].split('.')[0]}.".strip()  # Move last name to front
+                new_authors.append(new_author)
+            else:
+                new_authors.append(author)  # Keep as is if only one name
         # Bug fix #55:
         # In some cases, the number of affiliations does not match the number of authors
         # given by the CSV file. Since there is no way of knowing which affiliations belong
         # to which authors, we just ignore all affiliations in this case.
-        if len(authors) != len(affs):
+        if len(new_authors) != len(affs):
             logging.warn(
                 (
                     f"affiliations for entry '{self.title}' are invalid: the number of authors "
-                    f"({len(authors)}) does not match the number of author affilications ({len(affs)})"
+                    f"({len(new_authors)}) does not match the number of author affilications ({len(affs)})"
                 )
             )
 
-            affs = [None] * len(authors)
+            affs = [None] * len(new_authors)
 
-        return [IEEEAuthor(a, b) for a, b in zip(authors, affs)]
+        return [IEEEAuthor(a, b) for a, b in zip(new_authors, affs)]
 
     @property
     def affiliations(self):

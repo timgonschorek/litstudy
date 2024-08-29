@@ -107,7 +107,16 @@ class BibDocument(Document):
         if names[-1] == "others":
             names = names[:-1]
 
-        return [BibAuthor(name) for name in names]
+        new_authors = []
+        for author in names:
+            parts = author.strip().split(", ")  # Split at spaces and remove leading/trailing spaces
+            if len(parts) > 1:
+                new_author = f"{parts[0]}, {parts[1][0]}.{''.join(parts[2:-1])}"  # Move last name to front
+                new_authors.append(new_author)
+            else:
+                new_authors.append(author)  # Keep as is if only one name
+
+        return [BibAuthor(name.strip()) for name in new_authors]
 
     @property
     def publisher(self):

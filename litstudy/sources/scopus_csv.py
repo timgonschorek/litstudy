@@ -47,19 +47,9 @@ class ScopusCsvDocument(Document):
 
     @property
     def authors(self) -> List[ScopusCsvAuthor]:
-        auths_affs = self.entry.get("Authors with affiliations")
-        auths_id = self.entry.get("Author(s) ID", "")
-        # author_last, first initial, affiliation; .....
-        if not auths_affs:
-            return []
-        auths_affs = auths_affs.split("; ")
-        auths = [", ".join(auth_aff.split(", ")[0:2]) for auth_aff in auths_affs]
-        affs = [", ".join(auth_aff.split(", ")[2:]) for auth_aff in auths_affs]
-        # try to add id to author name
-        auths_id = auths_id.split(";")[:-1]  # remove empty string last el
-        if len(auths) == len(auths_id):
-            auths = [f"{name} (ID: {auth_id})" for name, auth_id in zip(auths, auths_id)]
-        return [ScopusCsvAuthor(a, b) for a, b in zip(auths, affs)]
+        auths = self.entry.get("Authors")
+        new_auths = auths.split(';')
+        return [ScopusCsvAuthor(a.split('.')[0].strip(),'') for a in new_auths]
 
     @property
     def publisher(self) -> Optional[str]:

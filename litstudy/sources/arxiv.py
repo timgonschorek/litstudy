@@ -1,4 +1,4 @@
-from litstudy.types import Document, DocumentSet, DocumentIdentifier, Author
+from ..types import Document, DocumentSet, DocumentIdentifier, Author
 from typing import Optional, List
 import feedparser  # type: ignore
 from datetime import datetime
