@@ -1,13 +1,18 @@
 import csv
+from typing import Dict, Union
+
+import pandas as pd
 from ..types import Document, Author, DocumentSet, DocumentIdentifier, Affiliation
 from ..common import robust_open
 import logging
 
+from pandas import DataFrame
+
 
 class SpringerDocument(Document):
     def __init__(self, entry):
-        doi = entry["Item DOI"] or None
-        title = entry["Item Title"]
+        doi = entry.get("Item DOI") or None
+        title = entry.get("Item Title")
 
         super().__init__(DocumentIdentifier(title, doi=doi))
         self.entry = entry
@@ -18,24 +23,29 @@ class SpringerDocument(Document):
 
     @property
     def authors(self):
-        authors = extract_author_names(self.entry.get("Authors"))
-        affs = self.entry.get("Author Affiliations", "").split("; ")
+        if isinstance(self.entry, dict):
+            authors = extract_author_names(self.entry.get("Authors"))
+            affs = self.entry.get("Author Affiliations", "").split("; ")
 
-        # Bug fix #55:
-        # In some cases, the number of affiliations does not match the number of authors
-        # given by the CSV file. Since there is no way of knowing which affiliations belong
-        # to which authors, we just ignore all affiliations in this case.
-        if len(authors) != len(affs):
-            logging.warn(
-                (
-                    f"affiliations for entry '{self.title}' are invalid: the number of authors "
-                    f"({len(authors)}) does not match the number of author affilications ({len(affs)})"
+            # Bug fix #55:
+            # In some cases, the number of affiliations does not match the number of authors
+            # given by the CSV file. Since there is no way of knowing which affiliations belong
+            # to which authors, we just ignore all affiliations in this case.
+            if len(authors) != len(affs):
+                logging.warn(
+                    (
+                        f"affiliations for entry '{self.title}' are invalid: the number of authors "
+                        f"({len(authors)}) does not match the number of author affilications ({len(affs)})"
+                    )
                 )
-            )
 
-            affs = [None] * len(authors)
+                affs = [None] * len(authors)
 
-        return [SpringerAuthor(a.strip(), b) for a, b in zip(authors, affs)]
+            return [SpringerAuthor(a.strip(), b) for a, b in zip(authors, affs)]
+
+        elif isinstance(self.entry, pd.DataFrame):
+            authors = [SpringerAuthor(n, a) for n, a in zip(self.entry["Authors"].split("; "), [])]
+            return authors
 
     @property
     def publisher(self):
@@ -75,8 +85,9 @@ class SpringerAuthor(Author):
 
         return [SpringerAffiliation(self._affiliation)]
 
+
 def extract_author_names(author_string) -> list[str]:
-  """
+    """
   Extracts author names from a string where names are concatenated.
 
   Args:
@@ -86,34 +97,35 @@ def extract_author_names(author_string) -> list[str]:
     A list of extracted author names.
   """
 
-  names = []
-  current_name = ""
-  for i, char in enumerate(author_string):
-    if char.isupper() and i > 1 and author_string[i-1].islower():
-      current_name_split = current_name.split(' ')
-      if len(current_name_split) > 1:
-          try:
-              names.append(f"{current_name_split[-1]}, {current_name_split[0][0]}.")
-          except IndexError as err:
+    names = []
+    current_name = ""
+    for i, char in enumerate(author_string):
+        if char.isupper() and i > 1 and author_string[i - 1].islower():
+            current_name_split = current_name.split(' ')
+            if len(current_name_split) > 1:
+                try:
+                    names.append(f"{current_name_split[-1]}, {current_name_split[0][0]}.")
+                except IndexError as err:
+                    print(f"Error: {err}")
+                    print(f"Current name: {current_name_split}")
+            else:
+                names.append(current_name)
+
+            current_name = char
+        else:
+            current_name += char
+    # Append the last name
+    current_name_split = current_name.split(' ')
+    if len(current_name_split) > 1:
+        try:
+            names.append(f"{current_name_split[-1]}, {current_name_split[0][0]}.")
+        except IndexError as err:
             print(f"Error: {err}")
             print(f"Current name: {current_name_split}")
-      else:
-          names.append(current_name)
-
-      current_name = char
     else:
-      current_name += char
-  # Append the last name
-  current_name_split = current_name.split(' ')
-  if len(current_name_split) > 1:
-      try:
-          names.append(f"{current_name_split[-1]}, {current_name_split[0][0]}.")
-      except IndexError as err:
-          print(f"Error: {err}")
-          print(f"Current name: {current_name_split}")
-  else:
-      names.append(current_name)
-  return names
+        names.append(current_name)
+    return names
+
 
 def load_springer_csv(path: str) -> DocumentSet:
     """Load CSV file exported from

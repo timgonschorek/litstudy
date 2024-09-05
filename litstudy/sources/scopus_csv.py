@@ -2,7 +2,8 @@
 support loading Scopus CSV export.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Dict
+import pandas as pd
 from ..types import Document, Author, DocumentSet, DocumentIdentifier, Affiliation
 from ..common import robust_open
 import csv
@@ -47,10 +48,13 @@ class ScopusCsvDocument(Document):
 
     @property
     def authors(self) -> List[ScopusCsvAuthor]:
-        auths = self.entry.get("Authors")
-        new_auths = auths.split(';')
-        return [ScopusCsvAuthor(a.split('.')[0].strip(),'') for a in new_auths]
-
+        if isinstance(self.entry, dict):
+            auths = self.entry.get("Authors")
+            new_auths = auths.split(';')
+            return [ScopusCsvAuthor(a.split('.')[0].strip(),'') for a in new_auths]
+        elif isinstance(self.entry, pd.DataFrame):
+            authors = [ScopusCsvAuthor(n, a) for n, a in zip(self.entry["Authors"].split("; "), [])]
+            return authors
     @property
     def publisher(self) -> Optional[str]:
         return self.entry.get("Publisher") or None

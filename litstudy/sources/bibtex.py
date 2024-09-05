@@ -6,6 +6,8 @@ from bibtexparser.latexenc import latex_to_unicode
 import bibtexparser
 from datetime import date
 import re
+import pandas as pd
+
 
 MONTHS = dict(
     jan=1,
@@ -93,30 +95,34 @@ class BibDocument(Document):
 
     @property
     def authors(self):
-        content = self.entry.get("author")
-        if not content:
-            return None
+        if isinstance(self.entry, dict):
+            content = self.entry.get("author")
+            if not content:
+                return None
 
-        content = re.sub("[ \r\n\t]+", " ", content)
-        names = re.split(" (?:and|And|AND) ", content)
+            content = re.sub("[ \r\n\t]+", " ", content)
+            names = re.split(" (?:and|And|AND) ", content)
 
-        if not names:
-            return None
+            if not names:
+                return None
 
-        # remove "other" from the list
-        if names[-1] == "others":
-            names = names[:-1]
+            # remove "other" from the list
+            if names[-1] == "others":
+                names = names[:-1]
 
-        new_authors = []
-        for author in names:
-            parts = author.strip().split(", ")  # Split at spaces and remove leading/trailing spaces
-            if len(parts) > 1:
-                new_author = f"{parts[0]}, {parts[1][0]}.{''.join(parts[2:-1])}"  # Move last name to front
-                new_authors.append(new_author)
-            else:
-                new_authors.append(author)  # Keep as is if only one name
+            new_authors = []
+            for author in names:
+                parts = author.strip().split(", ")  # Split at spaces and remove leading/trailing spaces
+                if len(parts) > 1:
+                    new_author = f"{parts[0]}, {parts[1][0]}.{''.join(parts[2:-1])}"  # Move last name to front
+                    new_authors.append(new_author)
+                else:
+                    new_authors.append(author)  # Keep as is if only one name
 
-        return [BibAuthor(name.strip()) for name in new_authors]
+            return [BibAuthor(name.strip()) for name in new_authors]
+        elif isinstance(self.entry, pd.DataFrame):
+            authors = [BibAuthor(n, a) for n, a in zip(self.entry["Authors"].split("; "), [])]
+            return authors
 
     @property
     def publisher(self):
