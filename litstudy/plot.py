@@ -200,7 +200,7 @@ def plot_author_histogram(docs: DocumentSet, **kwargs):
 
     :param kwargs: Passed to `plot_histogram`.
     """
-    default = dict(title="Authors", limit=25)
+    default = dict(title="Authors", limit=40)
     return wrapper(docs, compute_author_histogram, default, **kwargs)
 
 
